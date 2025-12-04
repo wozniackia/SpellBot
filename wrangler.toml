@@ -1,6 +1,7 @@
-name = "spellbot2"
+name = "spellbot"
 main = "./src/index.js"
-compatibility_date = "2023-05-18"
+compatibility_flags = [ "nodejs_compat" ]
+compatibility_date = "2025-12-04"
 
 # [secrets]
 # DISCORD_TOKEN
