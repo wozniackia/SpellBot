@@ -100,6 +100,8 @@ async function startPlaying(connection) {
     const ytdlp = spawn(
         process.env.YTDLP_PATH,
         [
+            "--cookies",
+            process.env.COOKIES_PATH,
             "-f",
             "bestaudio/best", // best available audio
             "-o",
