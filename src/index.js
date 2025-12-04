@@ -98,7 +98,7 @@ async function startPlaying(connection) {
     const url = "https://www.youtube.com/playlist?list=PLGV-bdy06e8NZOy5dFvfREkINS9uobx_a";
 
     const ytdlp = spawn(
-        "C:\\SpellBot2\\yt-dlp.exe",
+        process.env.YTDLP_PATH,
         [
             "-f",
             "bestaudio/best", // best available audio
