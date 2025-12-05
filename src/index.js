@@ -1,23 +1,6 @@
-const { Client, GatewayIntentBits, ActivityType } = require("discord.js");
-const {
-    joinVoiceChannel,
-    createAudioPlayer,
-    createAudioResource,
-    NoSubscriberBehavior,
-    StreamType,
-    VoiceConnectionStatus,
-    AudioPlayerStatus,
-} = require("@discordjs/voice");
-
-const ffmpeg = require("fluent-ffmpeg");
-const ffmpegPath = require("ffmpeg-static");
-const { spawn } = require("child_process");
-
-const { config } = require("dotenv");
-config();
-
-// Tell fluent-ffmpeg which ffmpeg binary to use
-ffmpeg.setFfmpegPath(ffmpegPath);
+const fs = require('node:fs');
+const path = require('node:path');
+const { Client, Collection, Events, GatewayIntentBits, MessageFlags, ActivityType } = require("discord.js");
 
 const client = new Client({
     intents: [
@@ -29,129 +12,63 @@ const client = new Client({
     ],
 });
 
-client.once("clientReady", async () => {
-    console.log("Bot online!");
+client.once("clientReady", async (readyClient) => {
+    console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 
-    client.user.setActivity("https://youtube.com/@s3notron", {
+    readyClient.user.setActivity("Spelluna", {
         type: ActivityType.Watching,
-    });
-
-    // spelluna
-    // const channelId = "674939205901615125";
-    // const guildId = "224188375114973185";
-
-    // suzyw
-    const channelId = "833682061386186817";
-    const guildId = "833682061172408331";
-
-    const guild = client.guilds.cache.get(guildId);
-
-    if (!guild) {
-        console.error("Server not found, could not connect to voice channel.");
-        return;
-    }
-
-    const connection = joinVoiceChannel({
-        channelId,
-        guildId,
-        adapterCreator: guild.voiceAdapterCreator,
-    });
-
-    connection.on("stateChange", (oldState, newState) => {
-        console.log(
-            `Connection state: ${oldState.status} -> ${newState.status}`
-        );
-
-        if (
-            oldState.status === VoiceConnectionStatus.Ready &&
-            newState.status === VoiceConnectionStatus.Connecting
-        ) {
-            // Workaround for some networking issues
-            connection.configureNetworking();
-        }
-    });
-
-    startPlaying(connection).catch((err) => {
-        console.error("Error in startPlaying:", err);
     });
 });
 
-async function startPlaying(connection) {
-    const player = createAudioPlayer({
-        behaviors: {
-            noSubscriber: NoSubscriberBehavior.Play,
-        },
-    });
+client.commands = new Collection();
 
-    player.on("stateChange", (oldState, newState) => {
-        console.log(`Player state: ${oldState.status} -> ${newState.status}`);
+const foldersPath = path.join(__dirname, 'commands');
+const commandFolders = fs.readdirSync(foldersPath);
 
-        if (newState.status === AudioPlayerStatus.Idle) {
-            console.log("Playback finished.");
+for (const folder of commandFolders) {
+    const commandsPath = path.join(foldersPath, folder);
+    const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith('.js'));
+    for (const file of commandFiles) {
+        const filePath = path.join(commandsPath, file);
+        const command = require(filePath);
+        // Set a new item in the Collection with the key as the command name and the value as the exported module
+        if ('data' in command && 'execute' in command) {
+            client.commands.set(command.data.name, command);
+        } else {
+            console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
         }
-    });
-
-    player.on("error", (error) => {
-        console.error("Audio player error:", error);
-    });
-
-    const url = "https://www.youtube.com/playlist?list=PLGV-bdy06e8NZOy5dFvfREkINS9uobx_a";
-
-    const ytdlp = spawn(
-        process.env.YTDLP_PATH,
-        [
-            "--cookies",
-            process.env.COOKIES_PATH,
-            "-f",
-            "bestaudio/best", // best available audio
-            "--extractor-args", "youtube:player_client=android", // should not require cookies
-            "-o",
-            "-",              // output to stdout
-            url,
-        ],
-        {
-            stdio: ["ignore", "pipe", "ignore"],
-        }
-    );
-
-    ytdlp.on("error", (err) => {
-        console.error("yt-dlp process error:", err);
-    });
-
-    ytdlp.on("close", (code, signal) => {
-        console.log(`yt-dlp exited with code ${code} signal ${signal}`);
-    });
-
-    const ffmpegStream = ffmpeg(ytdlp.stdout)
-        .inputOptions(["-analyzeduration 0", "-loglevel 0"])
-        .audioFrequency(48000) // Discord requirement
-        .audioChannels(2)
-        .format("s16le")       // raw PCM
-        .on("start", (cmd) => {
-            console.log("ffmpeg started:", cmd);
-        })
-        .on("error", (err) => {
-            console.error("ffmpeg error:", err.message || err);
-            ytdlp.kill("SIGINT");
-        })
-        .on("end", () => {
-            console.log("ffmpeg processing finished");
-            ytdlp.kill("SIGINT");
-        })
-        .pipe();
-
-    const resource = createAudioResource(ffmpegStream, {
-        inputType: StreamType.Raw,
-    });
-
-    player.play(resource);
-
-    const subscription = connection.subscribe(player);
-
-    connection.on(VoiceConnectionStatus.Disconnected, () => {
-        console.log("Voice connection disconnected, unsubscribing player");
-        subscription.unsubscribe();
-    });
+    }
 }
+
+client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+    const command = interaction.client.commands.get(interaction.commandName);
+
+    if (!command) {
+        console.error(`No command matching ${interaction.commandName} was found.`);
+        return;
+    }
+
+    if (command.data.name === 'play') {
+        await command.execute(interaction, client)
+    }
+
+    try {
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(error);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({
+                content: 'There was an error while executing this command!',
+                flags: MessageFlags.Ephemeral,
+            });
+        } else {
+            await interaction.reply({
+                content: 'There was an error while executing this command!',
+                flags: MessageFlags.Ephemeral,
+            });
+        }
+    }
+});
 
 client.login(process.env.token);
