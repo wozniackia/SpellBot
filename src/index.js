@@ -104,6 +104,7 @@ async function startPlaying(connection) {
             process.env.COOKIES_PATH,
             "-f",
             "bestaudio/best", // best available audio
+            "--extractor-args", "youtube:player_client=android", // should not require cookies
             "-o",
             "-",              // output to stdout
             url,
