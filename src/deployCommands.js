@@ -31,12 +31,14 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
     try {
         console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
-        await rest
-            .put(Routes.applicationCommands(process.env.DISCORD_APPLICATION_ID), { body: [] })
-            .then(() => console.log('Successfully deleted all application commands.'))
-            .catch(console.error);
-        const data = await rest
-            .put(Routes.applicationCommands(process.env.DISCORD_APPLICATION_ID), { body: commands });
+        for (let i = 0; i < commands.length; i++) {
+            console.log(commands[i]['name'])
+        }
+
+        // const data = await rest.put(Routes.applicationGuildCommands(process.env.DISCORD_APPLICATION_ID, process.env.DISCORD_GUILD_ID), { body: [] });
+        // const data = await rest.put(Routes.applicationGuildCommands(process.env.DISCORD_APPLICATION_ID, process.env.DISCORD_GUILD_ID), { body: commands });
+        const data = await rest.put(Routes.applicationCommands(process.env.DISCORD_APPLICATION_ID), { body: [] });
+        // const data = await rest.put(Routes.applicationCommands(process.env.DISCORD_APPLICATION_ID), { body: commands });
 
         console.log(`Successfully reloaded ${data.length} application (/) commands.`);
     } catch (error) {
