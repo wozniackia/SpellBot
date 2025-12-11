@@ -5,6 +5,9 @@ const {
 } = require("@discordjs/voice");
 const {startPlaying} = require("../../audioPlayer");
 
+// const url = "https://www.youtube.com/playlist?list=PLGV-bdy06e8NZOy5dFvfREkINS9uobx_a";
+const url = "https://youtu.be/wPSaPXRYFd4?si=2WWyIXPNvPcpcG9K";
+
 module.exports = {
     data: new SlashCommandBuilder().setName('play').setDescription('Plays music'),
     async execute(interaction, client) {
@@ -38,7 +41,7 @@ module.exports = {
             }
         });
 
-        startPlaying(connection).catch((err) => {
+        startPlaying(connection, url).catch((err) => {
             console.error("Error in startPlaying:", err);
         });
     },

@@ -14,13 +14,13 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 
 const YTDLP_PATH = "C:\\SpellBot2\\yt-dlp.exe"
 
-async function startPlaying(connection) {
-    const player = createAudioPlayer({
-        behaviors: {
-            noSubscriber: NoSubscriberBehavior.Play,
-        },
-    });
+const player = createAudioPlayer({
+    behaviors: {
+        noSubscriber: NoSubscriberBehavior.Play,
+    },
+});
 
+function createPlayerListeners(player) {
     player.on("stateChange", (oldState, newState) => {
         console.log(`Player state: ${oldState.status} -> ${newState.status}`);
 
@@ -32,10 +32,21 @@ async function startPlaying(connection) {
     player.on("error", (error) => {
         console.error("Audio player error:", error);
     });
+}
 
-    // const url = "https://www.youtube.com/playlist?list=PLGV-bdy06e8NZOy5dFvfREkINS9uobx_a";
-    const url = "https://youtu.be/wPSaPXRYFd4?si=2WWyIXPNvPcpcG9K";
-    console.log(url)
+function createYtdlpListeners(ytdlp) {
+    ytdlp.on("error", (err) => {
+        console.error("yt-dlp process error:", err);
+    });
+
+    ytdlp.on("close", (code, signal) => {
+        console.log(`yt-dlp exited with code ${code} signal ${signal}`);
+    });
+}
+
+async function startPlaying(connection, url) {
+    createPlayerListeners(player)
+
     const ytdlp = spawn(
         YTDLP_PATH,
         [
@@ -54,13 +65,7 @@ async function startPlaying(connection) {
         }
     );
 
-    ytdlp.on("error", (err) => {
-        console.error("yt-dlp process error:", err);
-    });
-
-    ytdlp.on("close", (code, signal) => {
-        console.log(`yt-dlp exited with code ${code} signal ${signal}`);
-    });
+    createYtdlpListeners(ytdlp)
 
     const ffmpegStream = ffmpeg(ytdlp.stdout)
         .inputOptions(["-analyzeduration 0", "-loglevel 0"])
@@ -94,4 +99,4 @@ async function startPlaying(connection) {
     });
 }
 
-module.exports = { startPlaying }
+module.exports = { startPlaying, createPlayerListeners, createYtdlpListeners }
