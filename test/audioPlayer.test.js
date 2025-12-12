@@ -67,3 +67,7 @@ describe('ytdlp listeners', () => {
         expect(console.error).toHaveBeenCalled()
     })
 })
+
+test('should spawn ytdlp', () => {
+
+})

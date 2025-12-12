@@ -44,10 +44,8 @@ function createYtdlpListeners(ytdlp) {
     });
 }
 
-async function startPlaying(connection, url) {
-    createPlayerListeners(player)
-
-    const ytdlp = spawn(
+function spawnYtdlpProcess(url) {
+    return spawn(
         YTDLP_PATH,
         [
             "--cookies",
@@ -64,10 +62,10 @@ async function startPlaying(connection, url) {
             stdio: ["ignore", "pipe", "ignore"],
         }
     );
+}
 
-    createYtdlpListeners(ytdlp)
-
-    const ffmpegStream = ffmpeg(ytdlp.stdout)
+function spawnFfmpegProcess(ytdlp) {
+    return ffmpeg(ytdlp.stdout)
         .inputOptions(["-analyzeduration 0", "-loglevel 0"])
         .audioFrequency(48000) // Discord requirement
         .audioChannels(2)
@@ -84,6 +82,16 @@ async function startPlaying(connection, url) {
             ytdlp.kill("SIGINT");
         })
         .pipe();
+}
+
+async function startPlaying(connection, url) {
+    createPlayerListeners(player)
+
+    const ytdlp = spawnYtdlpProcess(url)
+
+    createYtdlpListeners(ytdlp)
+
+    const ffmpegStream = spawnFfmpegProcess(ytdlp)
 
     const resource = createAudioResource(ffmpegStream, {
         inputType: StreamType.Raw,
